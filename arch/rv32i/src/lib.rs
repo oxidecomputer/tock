@@ -127,6 +127,16 @@ pub unsafe fn configure_trap_handler(mode: PermissionMode) {
     }
 }
 
+/// Perform some action while global interrupts are temporarily disabled
+pub unsafe fn without_interrupts<F>(f: F)
+    where F: Fn()
+{
+    let orig = csr::CSR.mstatus.extract();
+    csr::CSR.mstatus.modify_no_read(orig, csr::mstatus::mstatus::mie::CLEAR);
+    f();
+    csr::CSR.mstatus.set(orig.get());
+}
+
 /// This is the trap handler function. This code is called on all traps,
 /// including interrupts, exceptions, and system calls from applications.
 ///

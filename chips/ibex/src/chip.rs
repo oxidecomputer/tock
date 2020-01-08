@@ -56,7 +56,7 @@ impl kernel::Chip for Ibex {
         unsafe {
             while let Some(interrupt) = plic::next_pending() {
                 match interrupt {
-                    interrupts::UART => uart::UART0.handle_interrupt(),
+                    interrupts::UART_TX_WATERMARK..interrupts::UART_RX_PARITY_ERR => uart::UART0.handle_interrupt(),
                     _ => debug!("Pidx {}", interrupt),
                 }
 
