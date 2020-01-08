@@ -11,8 +11,6 @@ use kernel::common::StaticRef;
 use kernel::hil;
 use kernel::ReturnCode;
 
-use rv32i::without_interrupts;
-
 register_structs! {
     pub UartRegisters {
         (0x000 => intr_state: ReadWrite<u32, intr::Register>),
@@ -133,38 +131,31 @@ impl Uart<'a> {
 
         regs.ctrl
             .write(ctrl::nco.val((uart_ctrl_nco & 0xffff) as u32));
-        regs.ctrl.modify(ctrl::tx.val(1 as u32));
-        regs.ctrl.modify(ctrl::rx.val(1 as u32));
+        regs.ctrl.modify(ctrl::tx::SET + ctrl::rx::SET);
 
         regs.fifo_ctrl
-            .write(fifo_ctrl::rxrst.val(1 as u32) + fifo_ctrl::txrst.val(1 as u32));
+            .write(fifo_ctrl::rxrst::SET + fifo_ctrl::txrst::SET);
     }
 
     fn enable_tx_interrupt(&self) {
         let regs = self.registers;
 
-        unsafe {
-            without_interrupts(|| {
-                regs.intr_enable.modify(intr::tx_empty.val(1 as u32));
-            });
-        }
+        regs.intr_enable.modify(intr::tx_empty::SET);
     }
 
     fn disable_tx_interrupt(&self) {
         let regs = self.registers;
 
-        unsafe {
-            without_interrupts(|| {
-                regs.intr_enable.modify(intr::tx_empty.val(0 as u32));
-            });
-        }
+        regs.intr_enable.modify(intr::tx_empty::CLEAR);
+        // Clear the interrupt bit (by writing 1), if it happens to be set
+        regs.intr_state.write(intr::tx_empty::SET);
     }
 
     fn enable_rx_interrupt(&self) {
         let regs = self.registers;
 
         // Generate an interrupt if we get any value in the RX buffer
-        regs.intr_enable.modify(intr::rx_watermark.val(1 as u32));
+        regs.intr_enable.modify(intr::rx_watermark::SET);
         regs.fifo_ctrl.write(fifo_ctrl::rxilvl.val(0 as u32));
     }
 
@@ -172,7 +163,10 @@ impl Uart<'a> {
         let regs = self.registers;
 
         // Generate an interrupt if we get any value in the RX buffer
-        regs.intr_enable.modify(intr::rx_watermark.val(0 as u32));
+        regs.intr_enable.modify(intr::rx_watermark::CLEAR);
+
+        // Clear the interrupt bit (by writing 1), if it happens to be set
+        regs.intr_state.write(intr::rx_watermark::SET);
     }
 
     fn tx_progress(&self) {
@@ -193,6 +187,12 @@ impl Uart<'a> {
                     self.tx_index.set(tx_idx + 1)
                 }
             });
+
+            // If the FIFO started empty above, when the first character was written, it would have
+            // been immediately dispatched to the shift register, latching the TX_EMPTY state.
+            // That should be cleared before enabling the interrupt, so a subsequent empty state
+            // will latch the state transition again.
+            regs.intr_state.write(intr::tx_empty::SET);
 
             // With data queued, (re)enable the TX interrupt if the FIFO is not empty
             if !regs.status.is_set(status::txempty) {
@@ -248,8 +248,8 @@ impl hil::uart::Configure for Uart<'a> {
         // We can set the baud rate.
         self.set_baud_rate(params.baud_rate);
 
-        regs.fifo_ctrl.write(fifo_ctrl::rxrst.val(1 as u32));
-        regs.fifo_ctrl.modify(fifo_ctrl::txrst.val(1 as u32));
+        regs.fifo_ctrl
+            .write(fifo_ctrl::rxrst::SET + fifo_ctrl::txrst::SET);
 
         // Disable all interrupts for now
         regs.intr_enable.set(0 as u32);

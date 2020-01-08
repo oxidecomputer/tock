@@ -127,16 +127,6 @@ pub unsafe fn configure_trap_handler(mode: PermissionMode) {
     }
 }
 
-/// Perform some action while global interrupts are temporarily disabled
-pub unsafe fn without_interrupts<F>(f: F)
-    where F: Fn()
-{
-    let orig = csr::CSR.mstatus.extract();
-    csr::CSR.mstatus.modify_no_read(orig, csr::mstatus::mstatus::mie::CLEAR);
-    f();
-    csr::CSR.mstatus.set(orig.get());
-}
-
 /// This is the trap handler function. This code is called on all traps,
 /// including interrupts, exceptions, and system calls from applications.
 ///
@@ -197,7 +187,7 @@ pub extern "C" fn _start_trap() {
             sw   a6, 14*4(sp)
             sw   a7, 15*4(sp)
 
-            // Jump to board-specific trap handler code. Likely this was and
+            // Jump to board-specific trap handler code. Likely this was an
             // interrupt and we want to disable a particular interrupt, but each
             // board/chip can customize this as needed.
             jal ra, _start_trap_rust
