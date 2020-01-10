@@ -54,6 +54,9 @@ impl kernel::Chip for Ibex {
 
     fn service_pending_interrupts(&self) {
         unsafe {
+            // Timer handling, if needed
+            timer::TIMER.service_interrupt();
+
             while let Some(interrupt) = plic::next_pending() {
                 match interrupt {
                     interrupts::UART_TX_WATERMARK..interrupts::UART_RX_PARITY_ERR => {
@@ -155,8 +158,7 @@ unsafe fn handle_interrupt(intr: rv32i::csr::mcause::Interrupt) {
         }
         rv32i::csr::mcause::Interrupt::MachineTimer => {
             csr::CSR.mie.modify(csr::mie::mie::mtimer::CLEAR);
-            // TODO: fix timer handling (systick?)
-            timer::MACHINETIMER.handle_interrupt();
+            // timer handling done in kernel loop
         }
         rv32i::csr::mcause::Interrupt::MachineExternal => {
             csr::CSR.mie.modify(csr::mie::mie::mext::CLEAR);
