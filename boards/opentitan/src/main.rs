@@ -15,6 +15,8 @@ use kernel::Platform;
 use kernel::{create_capability, debug, static_init};
 use rv32i::csr;
 
+mod alarm_test;
+
 pub mod io;
 //
 // Actual memory for holding the active process structures. Need an empty list
@@ -179,6 +181,27 @@ pub unsafe fn reset_handler() {
         )
     );
     hil::time::Alarm::set_client(virtual_alarm_user, alarm);
+
+    // Do alarm test
+    let alarm_test_mux = static_init!(
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, ibex::timer::RvTimer>,
+        capsules::virtual_alarm::VirtualMuxAlarm::new(mux_alarm)
+    );
+    let alarm_test_inst = static_init!(
+        alarm_test::TestAlarm<
+            'static,
+            capsules::virtual_alarm::VirtualMuxAlarm<'static, ibex::timer::RvTimer>,
+        >,
+        alarm_test::TestAlarm::new(alarm_test_mux, Some(&ibex::gpio::PORT[11]))
+    );
+    hil::time::Alarm::set_client(alarm_test_mux, alarm_test_inst);
+    // Wait 100ms, then toggle the LED every 200ms (for 100 iterations)
+    alarm_test_inst.run(100, 200, 100);
+
+    // Ready the pin for toggling by the test
+    hil::gpio::Pin::make_output(&ibex::gpio::PORT[11]);
+    hil::gpio::Pin::clear(&ibex::gpio::PORT[11]);
+
 
     // Setup the console.
     let console = components::console::ConsoleComponent::new(board_kernel, uart_mux).finalize(());
