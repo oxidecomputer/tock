@@ -8,6 +8,7 @@ use rv32i;
 use rv32i::csr;
 
 use crate::interrupts;
+use crate::gpio;
 use crate::plic;
 use crate::timer;
 use crate::uart;
@@ -61,6 +62,10 @@ impl kernel::Chip for Ibex {
                 match interrupt {
                     interrupts::UART_TX_WATERMARK..interrupts::UART_RX_PARITY_ERR => {
                         uart::UART0.handle_interrupt()
+                    }
+                    int_pin @ interrupts::GPIO_PIN0..interrupts::GPIO_PIN31 => {
+                        let pin = &gpio::PORT[(int_pin - interrupts::GPIO_PIN0) as usize];
+                        pin.handle_interrupt();
                     }
                     _ => debug!("Pidx {}", interrupt),
                 }
