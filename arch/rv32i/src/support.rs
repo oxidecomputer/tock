@@ -1,6 +1,7 @@
 //! Core low-level operations.
 
 use core::ops::FnOnce;
+use crate::csr::{CSR, mstatus::mstatus};
 
 #[inline(always)]
 /// NOP instruction
@@ -16,12 +17,19 @@ pub unsafe fn wfi() {
     asm!("wfi" :::: "volatile");
 }
 
-/// TODO: implement
 pub unsafe fn atomic<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    f()
+    let cached_mstatus = CSR.mstatus.extract();
+    if cached_mstatus.is_set(mstatus::mie) {
+        CSR.mstatus.modify_no_read(cached_mstatus, mstatus::mie::CLEAR);
+    }
+    let res = f();
+    if cached_mstatus.is_set(mstatus::mie) {
+        CSR.mstatus.modify_no_read(cached_mstatus, mstatus::mie::SET);
+    }
+    res
 }
 
 #[cfg(target_os = "none")]
