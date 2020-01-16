@@ -1,7 +1,7 @@
 //! Core low-level operations.
 
+use crate::csr::{mstatus::mstatus, CSR};
 use core::ops::FnOnce;
-use crate::csr::{CSR, mstatus::mstatus};
 
 #[inline(always)]
 /// NOP instruction
@@ -23,11 +23,13 @@ where
 {
     let cached_mstatus = CSR.mstatus.extract();
     if cached_mstatus.is_set(mstatus::mie) {
-        CSR.mstatus.modify_no_read(cached_mstatus, mstatus::mie::CLEAR);
+        CSR.mstatus
+            .modify_no_read(cached_mstatus, mstatus::mie::CLEAR);
     }
     let res = f();
     if cached_mstatus.is_set(mstatus::mie) {
-        CSR.mstatus.modify_no_read(cached_mstatus, mstatus::mie::SET);
+        CSR.mstatus
+            .modify_no_read(cached_mstatus, mstatus::mie::SET);
     }
     res
 }

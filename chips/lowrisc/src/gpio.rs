@@ -2,7 +2,7 @@
 
 use kernel::common::cells::OptionalCell;
 use kernel::common::registers::{
-    register_bitfields, register_structs, Field, ReadOnly, ReadWrite, WriteOnly
+    register_bitfields, register_structs, Field, ReadOnly, ReadWrite, WriteOnly,
 };
 use kernel::common::StaticRef;
 use kernel::hil::gpio;
@@ -76,10 +76,7 @@ pub struct GpioPin {
 }
 
 impl GpioPin {
-    pub const fn new(
-        base: StaticRef<GpioRegisters>,
-        pin: Field<u32, pins::Register>,
-    ) -> GpioPin {
+    pub const fn new(base: StaticRef<GpioRegisters>, pin: Field<u32, pins::Register>) -> GpioPin {
         GpioPin {
             registers: base,
             pin: pin,
@@ -97,12 +94,12 @@ impl GpioPin {
         let shift = field.shift;
         let bit = if val { 1u32 } else { 0u32 };
         if shift < 16 {
-            lower.write(mask_half::data.val(bit << shift)
-                + mask_half::mask.val(1u32 << shift));
+            lower.write(mask_half::data.val(bit << shift) + mask_half::mask.val(1u32 << shift));
         } else {
             let upper_shift = shift - 16;
-            upper.write(mask_half::data.val(bit << upper_shift)
-                + mask_half::mask.val(1u32 << upper_shift));
+            upper.write(
+                mask_half::data.val(bit << upper_shift) + mask_half::mask.val(1u32 << upper_shift),
+            );
         }
     }
 
@@ -149,7 +146,12 @@ impl gpio::Configure for GpioPin {
 
     fn disable_output(&self) -> gpio::Configuration {
         let regs = self.registers;
-        GpioPin::half_set(false, self.pin, &regs.masked_oe_lower, &regs.masked_oe_upper);
+        GpioPin::half_set(
+            false,
+            self.pin,
+            &regs.masked_oe_lower,
+            &regs.masked_oe_upper,
+        );
         gpio::Configuration::Input
     }
 
@@ -174,18 +176,33 @@ impl gpio::Output for GpioPin {
         let pin = self.pin;
         let new_state = !regs.direct_out.is_set(pin);
 
-        GpioPin::half_set(new_state, self.pin, &regs.masked_out_lower, &regs.masked_out_upper);
+        GpioPin::half_set(
+            new_state,
+            self.pin,
+            &regs.masked_out_lower,
+            &regs.masked_out_upper,
+        );
         new_state
     }
 
     fn set(&self) {
         let regs = self.registers;
-        GpioPin::half_set(true, self.pin, &regs.masked_out_lower, &regs.masked_out_upper);
+        GpioPin::half_set(
+            true,
+            self.pin,
+            &regs.masked_out_lower,
+            &regs.masked_out_upper,
+        );
     }
 
     fn clear(&self) {
         let regs = self.registers;
-        GpioPin::half_set(false, self.pin, &regs.masked_out_lower, &regs.masked_out_upper);
+        GpioPin::half_set(
+            false,
+            self.pin,
+            &regs.masked_out_lower,
+            &regs.masked_out_upper,
+        );
     }
 }
 
@@ -202,15 +219,15 @@ impl gpio::Interrupt for GpioPin {
             gpio::InterruptEdge::RisingEdge => {
                 regs.intr_ctrl_en_rising.modify(pin.val(1));
                 regs.intr_ctrl_en_falling.modify(pin.val(0));
-            },
+            }
             gpio::InterruptEdge::FallingEdge => {
                 regs.intr_ctrl_en_rising.modify(pin.val(0));
                 regs.intr_ctrl_en_falling.modify(pin.val(1));
-            },
+            }
             gpio::InterruptEdge::EitherEdge => {
                 regs.intr_ctrl_en_rising.modify(pin.val(1));
                 regs.intr_ctrl_en_falling.modify(pin.val(1));
-            },
+            }
         }
         regs.intr_state.modify(pin.val(1));
         regs.intr_enable.modify(pin.val(1));

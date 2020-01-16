@@ -4,11 +4,11 @@ use core::hint::unreachable_unchecked;
 
 use kernel;
 use kernel::debug;
+use rv32i::csr::{mcause, mie::mie, mtvec::mtvec, CSR};
 use rv32i::syscall::SysCall;
-use rv32i::csr::{CSR, mcause, mie::mie, mtvec::mtvec};
 
-use crate::interrupts;
 use crate::gpio;
+use crate::interrupts;
 use crate::plic;
 use crate::timer;
 use crate::uart;
@@ -227,10 +227,8 @@ pub unsafe extern "C" fn disable_interrupt_trap_handler(_mcause: u32) {
 
 pub unsafe fn configure_trap_handler() {
     // The Ibex CPU does not support non-vectored trap entries.
-    CSR.mtvec.write(
-        mtvec::trap_addr.val(_start_trap_vectored as u32 >> 2)
-            + mtvec::mode::Vectored,
-    )
+    CSR.mtvec
+        .write(mtvec::trap_addr.val(_start_trap_vectored as u32 >> 2) + mtvec::mode::Vectored)
 }
 
 #[link_section = ".riscv.trap_vectored"]
