@@ -54,34 +54,48 @@ impl kernel::Chip for Ibex {
     }
 
     fn service_pending_interrupts(&self) {
-        unsafe {
-            // Timer handling, if needed
-            timer::TIMER.service_interrupt();
+        let mut handled_plic = false;
 
-            while let Some(interrupt) = plic::next_pending() {
-                match interrupt {
-                    interrupts::UART_TX_WATERMARK..interrupts::UART_RX_PARITY_ERR => {
-                        uart::UART0.handle_interrupt()
+        unsafe {
+            loop {
+                // Any pending timer interrupts handled first
+                let timer_fired = timer::TIMER.service_interrupts();
+
+                let mut plic_fired = false;
+                if let Some(interrupt) = plic::next_pending() {
+                    match interrupt {
+                        interrupts::UART_TX_WATERMARK..=interrupts::UART_RX_PARITY_ERR => {
+                            uart::UART0.handle_interrupt()
+                        }
+                        int_pin @ interrupts::GPIO_PIN0..=interrupts::GPIO_PIN31 => {
+                            let pin = &gpio::PORT[(int_pin - interrupts::GPIO_PIN0) as usize];
+                            pin.handle_interrupt();
+                        }
+                        _ => debug!("Pidx {}", interrupt),
                     }
-                    int_pin @ interrupts::GPIO_PIN0..interrupts::GPIO_PIN31 => {
-                        let pin = &gpio::PORT[(int_pin - interrupts::GPIO_PIN0) as usize];
-                        pin.handle_interrupt();
-                    }
-                    _ => debug!("Pidx {}", interrupt),
+                    // Mark that we are done with this interrupt and the hardware
+                    // can clear it.
+                    plic::complete(interrupt);
+                    handled_plic = true;
+                    plic_fired = true;
                 }
 
-                // Mark that we are done with this interrupt and the hardware
-                // can clear it.
-                plic::complete(interrupt);
+                if !timer_fired && !plic_fired {
+                    // All pending interrupts have been handled
+                    break;
+                }
             }
-            // Re-enable external interrupts once all entries from PLIC have
-            // been processed.
+        }
+
+        if handled_plic {
+            // If any interrupts from the PLIC were handled, then external interrupts must be
+            // reenabled on the CPU.
             CSR.mie.modify(mie::mext::SET);
         }
     }
 
     fn has_pending_interrupts(&self) -> bool {
-        unsafe { plic::has_pending() }
+        unsafe { timer::TIMER.is_pending() || plic::has_pending() }
     }
 
     fn sleep(&self) {
@@ -162,8 +176,7 @@ unsafe fn handle_interrupt(intr: mcause::Interrupt) {
             CSR.mie.modify(mie::msoft::CLEAR);
         }
         mcause::Interrupt::MachineTimer => {
-            CSR.mie.modify(mie::mtimer::CLEAR);
-            // timer handling done in kernel loop
+            timer::TIMER.handle_isr();
         }
         mcause::Interrupt::MachineExternal => {
             CSR.mie.modify(mie::mext::CLEAR);
