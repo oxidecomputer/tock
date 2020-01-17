@@ -1,7 +1,6 @@
 use core::cell::Cell;
-use kernel::debug;
-use kernel::hil::time::{Alarm, AlarmClient, Frequency};
 use kernel::hil::gpio::Pin;
+use kernel::hil::time::{Alarm, AlarmClient, Frequency};
 
 pub struct TestAlarm<'a, A: Alarm<'a>> {
     alarm: &'a A,
@@ -12,7 +11,7 @@ pub struct TestAlarm<'a, A: Alarm<'a>> {
 
 fn ms_to_tick<'a, A: Alarm<'a>>(ms: u32) -> u32 {
     let freq = <A::Frequency>::frequency();
-    let ftick =  (freq as u64) * (ms as u64);
+    let ftick = (freq as u64) * (ms as u64);
 
     (ftick / 1000) as u32
 }
@@ -23,7 +22,7 @@ impl<'a, A: Alarm<'a>> TestAlarm<'a, A> {
             alarm: alarm,
             count: Cell::new(0),
             interval: Cell::new(0),
-            toggle_pin: pin
+            toggle_pin: pin,
         }
     }
 
@@ -40,11 +39,8 @@ impl<'a, A: Alarm<'a>> TestAlarm<'a, A> {
 
 impl<'a, A: Alarm<'a>> AlarmClient for TestAlarm<'a, A> {
     fn fired(&self) {
+        self.toggle_pin.map(|pin| Pin::toggle(pin));
         let c = self.count.get();
-        debug!("tmr:{}", c);
-        self.toggle_pin.map(|pin| {
-            Pin::toggle(pin)
-        });
         if c > 0 {
             self.count.set(c - 1);
             let now = self.alarm.now();
