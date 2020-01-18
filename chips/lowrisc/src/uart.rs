@@ -69,10 +69,10 @@ register_bitfields![u32,
         rxempty OFFSET(5) NUMBITS(1) []
     ],
     rdata [
-        data OFFSET(0) NUMBITS(7) []
+        data OFFSET(0) NUMBITS(8) []
     ],
     wdata [
-        data OFFSET(0) NUMBITS(7) []
+        data OFFSET(0) NUMBITS(8) []
     ],
     fifo_ctrl [
         rxrst OFFSET(0) NUMBITS(1) [],
