@@ -17,6 +17,9 @@ lto = true
 opt-level = "z"
 debug = true
 
+[features]
+verilator = ["ibex/verilator"]
+
 [dependencies]
 components = { path = "../components" }
 rv32i = { path = "../../arch/rv32i" }

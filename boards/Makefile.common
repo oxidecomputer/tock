@@ -93,6 +93,10 @@ ifneq (,$(findstring thumb,$(TARGET)))
   OBJDUMP_FLAGS += --arch-name=thumb
 endif
 
+ifneq ($(FEATURES),)
+  FEATURE_FLAG ?= --features $(FEATURES)
+endif
+
 # Dump configuration for verbose builds
 ifneq ($(V),)
   $(info )
@@ -181,10 +185,10 @@ target:
 
 .PHONY: target/$(TARGET)/release/$(PLATFORM)
 target/$(TARGET)/release/$(PLATFORM):
-	$(Q)RUSTFLAGS="$(RUSTFLAGS_FOR_CARGO_LINKING)" $(CARGO) build --target=$(TARGET) $(VERBOSE) --release
+	$(Q)RUSTFLAGS="$(RUSTFLAGS_FOR_CARGO_LINKING)" $(CARGO) build --target=$(TARGET) $(VERBOSE) --release $(FEATURE_FLAG)
 	$(Q)$(SIZE) $@
 
 .PHONY: target/$(TARGET)/debug/$(PLATFORM)
 target/$(TARGET)/debug/$(PLATFORM):
-	$(Q)RUSTFLAGS="$(RUSTFLAGS_FOR_CARGO_LINKING)" $(CARGO) build $(VERBOSE) --target=$(TARGET)
+	$(Q)RUSTFLAGS="$(RUSTFLAGS_FOR_CARGO_LINKING)" $(CARGO) build $(VERBOSE) --target=$(TARGET) $(FEATURE_FLAG)
 	$(Q)$(SIZE) $@

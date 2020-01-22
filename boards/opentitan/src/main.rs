@@ -18,7 +18,12 @@ use rv32i::csr;
 mod alarm_test;
 
 pub mod io;
-//
+
+#[cfg(not(feature = "verilator"))]
+const UART_BAUD: u32 = 230_400;
+#[cfg(feature = "verilator")]
+const UART_BAUD: u32 = 9_600;
+
 // Actual memory for holding the active process structures. Need an empty list
 // at least.
 static mut PROCESSES: [Option<&'static dyn kernel::procs::ProcessType>; 4] =
@@ -115,7 +120,7 @@ pub unsafe fn reset_handler() {
     // Create a shared UART channel for the console and for kernel debug.
     let uart_mux = components::console::UartMuxComponent::new(
         &ibex::uart::UART0,
-        230400,
+        UART_BAUD,
         dynamic_deferred_caller,
     )
     .finalize(());
