@@ -5,7 +5,7 @@
 //! Last Modified: 1/10/2020
 use core::cell::Cell;
 use kernel::debug;
-use kernel::hil::time::{Alarm, AlarmClient, Frequency};
+use kernel::hil::time::{Alarm, AlarmClient, Ticks};
 
 pub struct TestAlarm<'a, A: Alarm<'a>> {
     alarm: &'a A,
@@ -29,11 +29,8 @@ impl<A: Alarm<'a>> TestAlarm<'a, A> {
     fn set_next_alarm(&self, ms: u32) {
         self.ms.set(ms);
         let now = self.alarm.now();
-        let freq: u64 = <A::Frequency>::frequency() as u64;
-        let lticks: u64 = ms as u64 * freq;
-        let ticks: u32 = (lticks / 1000) as u32;
-        let t = now.wrapping_add(ticks);
-        debug!("Setting alarm to {}", t);
+        let t = now.wrapping_add(A::ticks_from_ms(ms));
+        debug!("Setting alarm to {}", t.into_u32());
         self.alarm.set_alarm(t);
     }
 }
