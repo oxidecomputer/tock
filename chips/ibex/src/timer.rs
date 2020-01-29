@@ -5,6 +5,7 @@ use kernel::common::cells::OptionalCell;
 use kernel::common::registers::{register_bitfields, register_structs, ReadWrite, WriteOnly};
 use kernel::common::StaticRef;
 use kernel::hil::time;
+use kernel::hil::time::{Ticks, Ticks32Bits};
 
 use crate::chip::CHIP_FREQ;
 
@@ -106,12 +107,10 @@ impl RvTimer<'a> {
 
 impl time::Time for RvTimer<'a> {
     type Frequency = Freq10KHz;
+    type Ticks = Ticks32Bits;
 
-    fn now(&self) -> u32 {
-        self.registers.value_low.get()
-    }
-    fn max_tics(&self) -> u32 {
-        core::u32::MAX
+    fn now(&self) -> Self::Ticks {
+        Self::Ticks::from(self.registers.value_low.get())
     }
 }
 
@@ -120,19 +119,19 @@ impl time::Alarm<'a> for RvTimer<'a> {
         self.client.set(client);
     }
 
-    fn set_alarm(&self, tics: u32) {
+    fn set_alarm(&self, tics: Self::Ticks) {
         let regs = self.registers;
 
         // Make sure that any overlow into the high bits of the timer (which we are ignoring for
         // now) do not have an effect on the alarm.
         regs.value_high.set(0);
 
-        regs.compare_low.set(tics);
+        regs.compare_low.set(tics.into_u32());
         regs.intr_enable.write(intr::timer0::SET);
     }
 
-    fn get_alarm(&self) -> u32 {
-        self.registers.compare_low.get()
+    fn get_alarm(&self) -> Self::Ticks {
+        Self::Ticks::from(self.registers.compare_low.get())
     }
 
     fn disable(&self) {
