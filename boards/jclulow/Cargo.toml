@@ -1,0 +1,25 @@
+[package]
+name = "jclulow"
+version = "0.1.0"
+authors = ["Tock Project Developers <tock-dev@googlegroups.com>"]
+build = "build.rs"
+edition = "2018"
+
+[profile.dev]
+panic = "abort"
+lto = false
+opt-level = "z"
+debug = true
+
+[profile.release]
+panic = "abort"
+lto = true
+opt-level = "z"
+debug = true
+
+[dependencies]
+components = { path = "../components" }
+cortexm3 = { path = "../../arch/cortex-m3" }
+capsules = { path = "../../capsules" }
+kernel = { path = "../../kernel" }
+jclulow1 = { path = "../../chips/jclulow1" }
