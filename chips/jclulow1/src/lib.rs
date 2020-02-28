@@ -8,6 +8,7 @@ mod deferred_call_tasks;
 
 pub mod chip;
 pub mod nvic;
+pub mod ioarea;
 
 use cortexm3::{generic_isr, hard_fault_handler, svc_handler, systick_handler};
 

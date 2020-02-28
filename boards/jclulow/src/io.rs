@@ -54,12 +54,17 @@ impl IoWrite for Writer {
 #[panic_handler]
 pub unsafe extern "C" fn panic_fmt(pi: &PanicInfo) -> ! {
     let writer = &mut WRITER;
-    debug::panic(
-        &mut [], /* XXX no LEDs... */
-        writer,
-        pi,
-        &cortexm3::support::nop,
-        &PROCESSES,
-        &CHIP,
-    )
+    loop {
+        /*
+         * XXX
+         */
+    }
+    //debug::panic(
+    //    &mut [], /* XXX no LEDs... */
+    //    writer,
+    //    pi,
+    //    &cortexm3::support::nop,
+    //    &PROCESSES,
+    //    &CHIP,
+    //)
 }
